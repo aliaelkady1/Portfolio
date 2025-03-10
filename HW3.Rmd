@@ -1,44 +1,282 @@
 ---
-title: "HW3"
-date: "2024-01-31"
-output: pdf_document
+title: "HW3 Peer Assessment"
+output:
+  html_document:
+    df_print: paged
+date: "`r format(Sys.time(), '%c %Z')`"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-rm(list=ls())
-library(ggplot2)
-library(outliers)
-usCrime = read.table("uscrime.txt", header = TRUE, stringsAsFactors = FALSE)
-crimeCol = usCrime$Crime
-crime <- usCrime[,"Crime"]
-str(crime)
+options(tinytex.verbose = TRUE)
+
+library(car)
 ```
 
-## ISYE 6501 Homework 3      
+# Part 1: Logistic Regression
+# Background
 
-Question 5.1       
-Grubbs test is a method used to detect outliers in a normally distributed data set. By plotting the data in a histogram we can see that the data is somewhat normally distributed and the bloxplot shows us that potential outliers are present.
-Grubbs test is predefined by a null hypothesis (there no outliers) and an alternative hypothesis (there is exactly one outlier).               
+The objective is to predict whether a passenger survived the Titanic disaster
 
-This first Grubbs test gave a p-value that is considered not significant therefore I removed the data point and tried again. The data point (1969) had a p-value of 0.03 which is considered significant but might be a bit high therefore I removed it and tried again.       
+## Data Description
+1. **Survival**: (1 if the passenger survived, 0 if they did not).
+2. **Pclass**: Numeric (1,2,3).
+3. **Sex**: Categorical (male, female)
+4. **Age**: Numeric.
+5. **SibSp**: Number of siblings/spouses aboard. 
+6. **Parch**: Number of parents/children aboard.
+7. **Fare**：Numeric.
 
-The third try gave a more significant p-value (0.02) which suggests that the data point 1993 is an outlier.            
-```{r cars}
-plot(crime)
-hist(crime)
-boxplot(crime) #one sided outlier detection
+## Setup
 
-grubbs.test(crime,type=10)
+You can import the data and set up the problem with the following R code:
 
-crime2 <- usCrime[-26,16]
-grubbs.test(crime2, type=10) 
+```{r}
+# Import the data
+rawdata = read.csv("Titanic.csv", header=TRUE)
 
-crime3 <- usCrime[-4,16]
-grubbs.test(crime3, type = 10)
+# Remove columns that we do not want
+rawdata$X <- NULL
+rawdata$PassengerId <- NULL
+rawdata$Name <- NULL
+rawdata$Ticket <- NULL
+rawdata$Cabin <- NULL
 
+# Set variables as categorical
+rawdata$Pclass<-as.factor(rawdata$Pclass)
+rawdata$Sex<-as.factor(rawdata$Sex)
+rawdata$SibSp<-as.factor(rawdata$SibSp)
+rawdata$Parch<-as.factor(rawdata$Parch)
+
+# Print head of rawdata
+head(rawdata)
 ```
-Citation:      
-https://shorturl.at/fzDQ4      
-TA Office Hours     
 
+**Note:** For all of the following questions, treat variables **Age** and **Fare** as quantitative variables and **Pclass**, **Sex**, **SibSp**,and **Parch** as categorical variables. Categorical variables have already been converted to factors in the starter code.
+
+
+# Question 1: Fitting the Model - 9 pts
+
+Use *Survived* as the response variable to fit a logistic regression model using logit as the link function with *Pclass* as the predictor. Call it **model1**.
+
+**(a) 3 pts - Print the model1 summary table. What are the model parameters and estimates?**
+
+```{r}
+model1 = glm(Survived ~ Pclass, data = rawdata, family = binomial)
+summary(model1)
+```
+Model parameters are:     
+intercept and its estimate is: 0.5432    
+pclass2 = -0.6520    
+pclass3 = -1.6390    
+
+
+**(b) 6 pts - Calculate the odds ratio and interpret the estimated coefficient of *Pclass3* with respect to the log-odds of survival and the odds of survival.**
+
+```{r}
+exp(coef(model1))
+```
+
+The odds for class3 to survive in comparison to class1 is 0.194 times higher. We obtained this by taking the exponential of the log odds which is the coefficient. 0.194 is the odds ratio between class 1 and 3.     
+The odds for class2 to survive in comparison to class1 is 0.521 times higher. Again, 0.521 is the odds ratio between class 1 and 2.     
+The odds ratio refers to the chance of an event occuring (in our case, survival) in one group to the odds of it occuring in another group.     
+
+The estimated coefficient of Pclass3 (-1.6390) is the log of the odds ratio of the person surviving when his Pclass is 3. 
+
+# Question 2: Statistical Inference - 7 pts 
+
+**(a) 3 pts - Using model1, provide a 95% confidence interval for the coefficient of *Pclass3*.**
+
+```{r}
+confint(model1, "Pclass3", level = 0.95)
+```
+
+**(b) 4 pts - According to the summary table of model1, is *Pclass3* statistically significant? Is the overall regression statistically significant at the 0.01 significance level?**
+
+```{r}
+summary(model1)
+
+stat = model1$null.deviance - model1$deviance
+dfs = model1$df.null - model1$df.residual
+overall_reg = 1-pchisq(stat, df = dfs)
+overall_reg
+```
+According to the summary of the model, Pclass3 is statistically significant since it has a pvalue of <2e-16, meaning that it is almost zero.    
+     
+The overall regression is statistically significant (due to a pvalue of 0), which means that the model provides explanatory power.
+
+
+# Question 3: Goodness of fit - 17 pts
+
+**(a) 5 pts - Assess the goodness-of-fit of model1 using both deviance residuals and Pearson residuals. What do you conclude?**
+
+```{r}
+c(deviance(model1), 1-pchisq(deviance(model1),model1$df.residual))
+```
+
+```{r}
+pearson = residuals(model1, type = "pearson")
+pearson.tvalue = sum(pearson^2)
+c(pearson.tvalue, 1-pchisq(pearson.tvalue,model1$df.residual))
+```
+using the deviance residuals, we reject the null hypothesis meaning that the model is not a good fit. However, using the pearson residuals we accept the null hypothesis, meaning that the model IS a good fit.
+**(b) 2 pts - Calculate the estimated dispersion parameter for this model. Is this an overdispersed model?**
+
+```{r}
+model1_df = model1$df.residual #n-p-1
+model1_dev = model1$deviance
+overdisp = model1_dev / model1_df
+overdisp
+```
+No, the model isnt overdispersed using a threshold of 2.
+
+**(c) 2 pts - Using *Survived* as the response variable with *Pclass*, *Sex*, *SibSp*, and *Parch* as the predictors and logit as the link function, fit a logistic regression model and call it **model2**.**
+```{r}
+model2 = glm(Survived ~ Pclass + Sex + SibSp + Parch, family = "binomial", data = rawdata)
+```
+
+**(d) 3 pts - Using both deviance residuals and Pearson residuals to assess the goodness-of-fit hypothesis test. What do you conclude? **
+```{r}
+c(deviance(model2), 1-pchisq(deviance(model2),model2$df.residual))
+```
+
+```{r}
+pearson2 = residuals(model2, type = "pearson")
+pearson2.tvalue = sum(pearson2^2)
+c(pearson2.tvalue, 1-pchisq(pearson2.tvalue,model2$df.residual))
+```
+Both residuals for model2 indicate a good fit. Unlike in model1, where the deviance indicated a not good fit.    
+
+**(e) 3 pts - Calculate the estimated dispersion parameter for this model. Compare model2 with model1 based on the p-values of the deviance residuals and Pearson residuals tests and the dispersion parameters of the two models. Which model is a better fit?**
+```{r}
+model2_df = model2$df.residual #n-p-1
+model2_dev = model2$deviance
+overdisp2 = model2_dev / model2_df
+overdisp2
+```
+Model2 seems like a better fit due to having a lower dispersion parameter, and both of its residuals indicating that it is a good fit. Unlike model1 which its deviance suggests that it isnt a good fit.   
+
+**(f) 2 pts - Please provide two methods that can potentially improve the model fit.**
+Consider other predictors that can be added to the model that might improve the fit. And, consider transforming the predictors.   
+
+# Question 4: Prediction - 7 pts
+
+Suppose there is a passenger with the following characteristics:
+
+1. **Pclass**: 3
+
+2. **Sex**: male
+
+3. **SibSp**: 2
+
+4. **Parch**: 1
+
+**(a) 4 pts - Predict the passenger's probability of surviving using model1 and model2.**
+
+```{r}
+passenger = data.frame(Pclass = 3, Sex = "male", SibSp = 2, Parch = 1)
+passenger$Pclass<-as.factor(passenger$Pclass)
+passenger$Sex<-as.factor(passenger$Sex)
+passenger$SibSp<-as.factor(passenger$SibSp)
+passenger$Parch<-as.factor(passenger$Parch)
+
+prediction1 = predict(model1, newdata = passenger, type = "response")
+prediction1
+```
+
+```{r}
+prediction2 = predict(model2, newdata = passenger, type="response")
+prediction2
+```
+
+Model1 probability of survival = 0.251.
+
+**(b) 3 pts - Compare your predictions. i.e. which model is more reliable based on the analysis?**    
+Based on the analysis, model 2 is more reliable.
+
+
+# Part 2: Poisson Regression
+# Background
+Bicycle crossing counts for East River bridges crossing into Manhattan, New York City, and we want to focus on Brooklyn Bridge specifically.
+
+## Data Description
+1. **High.Temp...F.**: Numeric.
+2. **Low.Temp...F.**: Numeric.
+3. **Precipitation**: Numeric (range from 0-1).
+4. **DayOfWeek**: Categorical (Sun, Mon, Tues, Wed, Thu, Fri, Sat).
+5. **Brooklyn.Bridge**: number of bicyclists that cross Brooklyn Bridge in a day.
+
+## Setup
+
+You can import the data and set up the problem with the following R code:
+
+```{r}
+# Import data.
+casedata <- read.csv("bicycle.csv", header=T)
+
+casedata$Day <- as.Date(casedata$Day)
+casedata$Precipitation <- as.numeric(casedata$Precipitation)
+
+casedata$DayOfWeek <- weekdays(casedata$Day)
+casedata$DayOfWeek <- as.factor(casedata$DayOfWeek)
+
+casedata_brooklyn <- casedata[,c("High.Temp...F.", "Low.Temp...F.", "Precipitation", "Brooklyn.Bridge", "DayOfWeek")] 
+
+head(casedata_brooklyn)
+```
+
+# Question 5: Fitting the Model - 7 pts
+
+Using *Brooklyn.Bridge* as the response variable with *High.Temp...F.*, *Low.Temp...F.*, *Precipitation*, and *DayOfWeek* as the predictors, fit a poisson regression model and call it **poisson_model**.
+
+**(a) 3 pts -  Print the poisson_model summary table. Interpret the estimated coefficient of *Precipitation* with respect to the log expected Brooklyn Bridge count.**
+```{r}
+poisson_model = glm(Brooklyn.Bridge ~ High.Temp...F. + Low.Temp...F. + Precipitation + DayOfWeek, family = "poisson", data = casedata_brooklyn)
+
+summary(poisson_model)
+```
+Percipitation has a coefficient of -2.8737164. This means that while holding everything else constant, one unit increase in the percipitation, causes -2.8737164 decrease in the log exprected count.
+
+**(b) 2 pts - Is the overall regression significant?**
+```{r}
+1-pchisq(poisson_model$null.deviance - poisson_model$deviance, df = poisson_model$df.null-poisson_model$df.residual)
+```
+The overall regression is statistically significant (due to a pvalue of 0), which means that the model provides explanatory power.
+
+**(c) 2 pts - Perform a goodness-of-fit test on poisson_model using deviance residuals. What do you conclude?**
+```{r}
+c(deviance(model2), 1-pchisq(deviance(model2),model2$df.residual))
+```
+
+# Question 6: Outlier detection - 13 pts
+
+**(a) 2 pts - Create a Q-Q plot of the residuals for the poisson_model.**
+```{r}
+res <- resid(poisson_model,type="deviance")
+qqnorm(res)
+```
+
+**(b) 4 pts - Using Cook's Distance with threshold = 1, how many outliers are identified in "poisson_model"? Remove the outliers from the dataset and create poisson_model2 with the new dataset.**
+```{r}
+cooks_residuals <- cooks.distance(poisson_model, type="deviance")
+outliers <- which(cooks_residuals > 1)
+length(outliers)
+```
+
+```{r}
+clean_casedata <- casedata_brooklyn[-outliers,]
+poisson_model2 = glm(Brooklyn.Bridge ~ High.Temp...F. + Low.Temp...F. + Precipitation + DayOfWeek, family = "poisson", data = clean_casedata)
+```
+
+**(c) 4 pts - Perform the deviance residual test to check the goodness-of-fit of poisson_model2. Is poisson_model2 a good fit? Discuss the appropriateness of using Cook's Distance for poisson regression.**
+```{r}
+with(poisson_model2, cbind(res.deviance = poisson_model2$deviance, df = poisson_model2$df.residual, p = 1- pchisq(poisson_model2$deviance, poisson_model2$df.residual)))
+```
+pvalue is zero, meaning that we reject the null hypothesis of good fit, therefore it isnt a good fit.
+**(d) 3 pts - Use the alternative method for outlier detection discussed in lecture 13 on the first Poisson model ("poisson_model"). How many outliers are identified? What assumption is made in this approach?**
+
+```{r}
+dev_residuals <- residuals(poisson_model, type = "deviance")
+outliers_dev <- which(abs(dev_residuals) > qnorm(.99995))
+length(outliers_dev)
+```

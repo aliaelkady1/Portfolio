@@ -1,0 +1,266 @@
+---
+title:
+output:
+html_document:
+df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# I added the word "Answer" before my answers for clarification!
+
+### Part A. Variables
+In the field of psychology, much research is done using self-report surveys using Likert scales (look it up!).
+
+### A1
+__What type of variable is a Likert response?__ (1 pt)
+
+*Answer*
+A (numerical) ordinal variable. As it is ordered.
+
+### A2
+__What are some (at least 2) benefits of using Likert scales?__ (2 pts)
+
+*Answer*
+Using Likert scales moves away from the binary "yes/no" option which allows a respondent to better convey their thoughts/feelings on a given topic. The presence of a spectrum of choices a=offers more variance/discrimination. Likert scales can be formatted in a matrix and are usually easier for the respondent to fill in.
+
+### A3
+__What are some drawbacks — and dangers — of using them? Make sure you mention at least one 'drawback' and one 'danger' (a 'drawback' is a shortcoming, while a 'danger' implies potential harm).__ (2 pts)
+
+*Answer*
+Drawback -> Often times in the Likert scale, the option of a midpoint/neutral is included. While this can be an advantage, it can also be a limitation as it can give respondents a quick way out of answering the question or thinking deeply about their response. This leads to inaccurate data. Interoretation of the mid point can also be confusing because it is unclear if the respondent is actually neutral towards the topic or indifferent. It also doesn't show if the respondent did not understand the questions.
+
+Danger -> Several factors may causes biases in the response which can be dangerous as this will lower our confidence in our data. Potential bias-creating factors include: forced responses due to the categorical nature of the scale, questionable credibility as sometimes respondents will choose what is socially acceptable rather than what they actually believe.
+
+# Part B. Simple Linear Regression
+
+Perform linear regressions on a dataset from a European Toyota car dealer on the sales records of used cars (Toyota Corolla). We would like to construct a reasonable linear regression model for the relationship between the sales prices of used cars and various explanatory variables (such as age, mileage, horsepower). We are interested to see what factors affect the sales price of a used car and by how much.
+
+Data Description
+
+*Id*        - ID number of each used car 
+*Model*     - Model name of each used car 
+*Price*     - The price (in Euros) at which each used car was sold 
+*Age*       - Age (in months) of each used car as of August 2004 
+*KM*        - Accumulated kilometers on odometer 
+*HP*        - Horsepower 
+*Metallic*  - Metallic color? (Yes = 1, No = 0) 
+*Automatic* - Automatic transmission? ( Yes = 1, No = 0) 
+*CC*        - Cylinder volume (in cubic centimeters) 
+*Doors*     - Number of doors 
+*Gears*     - Number of gears 
+*Weight*    - Weight (in kilograms)
+
+The data is in the file "UsedCars.csv". To read the data in `R`, save the file in your working directory (make sure you have changed the directory if different from the R working directory) and read the data using the `R` function `read.csv()`.
+
+Read data and show few rows of data.
+
+```{r}
+# Read in the data
+data = read.csv("UsedCars.csv",sep = ",",header = TRUE)
+# Show the first few rows of data
+head(data, 3)
+
+
+```
+
+## Question B1: Exploratory Data Analysis
+
+a.  **3 pts** Use a scatter plot to describe the relationship between Price and the Accumulated kilometers on odometer. Describe the general trend (direction and form). Include plots and R-code used.
+
+*Answer* 
+The below plot shows an inverse relationship between accumulated kilometers and price. As the accumulated km increase, the price it is sold for decreases. Most cars sold have an average accumulated km of around 60,000.
+```{r}
+plot(data$KM, data$Price, xlab = "Accumulated KM", ylab = "Price")
+
+
+
+```
+
+b.  **3 pts** What is the value of the correlation coefficient between *Price* and *KM*? Please interpret the strength of the correlation based on the correlation coefficient.
+
+*Answer* 
+The correlation coefficient between Price and KM is -0.6183873. It is negative to indicate an inverse relationship. Correlation coefficients range between -1 to 1, where extremities indicate a perfect linear relationship (highly unlikely in the real world). A correlation coefficient of -0.62 indicates a fairly strong negative linear correlation (when the x increases, the y decreases). 
+
+```{r}
+# Your code here...
+cor(data$KM, data$Price)
+
+```
+
+c.  **2 pts** Based on this exploratory analysis, would you recommend a simple linear regression model for the relationship?
+
+*Answer* 
+Based on this alone,  I would recommend a simple linear regression if the data would be transformed. This preliminary data exploration indicates a fairly strong relationship between accumulated km and price, therefore it can be helpful to use this as a predicting variable in a simple linear regression model. More analysis is needed for sure, but based on this alone, if the data were to be transformed, then yes I would recommmend a simple linear regression model.
+
+d.  **1 pts** Based on the analysis above, would you pursue a transformation of the data? *Do not transform the data.*
+
+*Answer* 
+Yes I would transform the data, because it has a slight downward slope formation when plotted. Therefore, transforming the data would help fit the line better. 
+
+## Question B2: Fitting the Simple Linear Regression Model
+
+Fit a linear regression model, named *model_1*, to evaluate the relationship between UsedCars Price and the accumulated KM. *Do not transform the data.* The function you should use in R is:
+
+```{r}
+price = data$Price
+km = data$KM
+model_1 = lm(Price ~ KM, data)
+summary(model_1)
+```
+
+a.  **3 pts** What are the model parameters and what are their estimates?
+
+*Answer* 
+There are 3 model parameters: y=b0 + b1x + e. 
+b0 (intercept) is 1.494e+04.
+b1 (coefficient of KM) is -6.817e-02.
+and e (error term) is 2615.
+
+b.  **2 pts** Write down the estimated simple linear regression equation.
+
+*Answer* 
+y = 1.494e+04 - 6.817e-02x + 2615
+which can be interpreted as -> Price = 1.494e+04 + (-6.817e-02)Accumulated KM
+
+c.  **2 pts** Interpret the estimated value of the $\beta_1$ parameter in the context of the problem.
+
+*Answer* 
+B1 is the expected change in the price associated with one uni ot change in the accumulated km.
+
+d.  **2 pts** Find a 95% confidence interval for the $\beta_1$ parameter. Is $\beta_1$ statistically significant at this level?
+
+*Answer* 
+The 95% confidence interval for B1 is (-7.296 x10-2 , -6.34 x10-2). B1 is statistically significant at this level (p value < 2 x10-16) .
+
+
+```{r}
+confint(model_1, level = 0.95)
+
+```
+
+e.  **2 pts** Is $\beta_1$ statistically significantly negative at an $\alpha$-level of 0.01? What is the approximate p-value of this test?
+
+*Answer* 
+The approx p-value of this test is 1.66 x10-134, which is way less than 0.01 therefore it is statistically significantly negative.
+
+```{r}
+tvalue = -27.95
+pt(tvalue, 1262)
+
+```
+
+## Question B3: Checking the Assumptions of the Model
+
+Create and interpret the following graphs with respect to the assumptions of the linear regression model. In other words, comment on whether there are any apparent departures from the assumptions of the linear regression model. Make sure that you state the model assumptions and assess each one. Each graph may be used to assess one or more model assumptions.
+
+a.  **3 pts** Scatterplot of the data with *KM* on the x-axis and *Price* on the y-axis. Make sure you include a line showing the overall trend of the scatterplot.
+
+*Answer* 
+Model Assumption(s) it checks: Linearity
+Interpretation: A scatterplot of the response and predictor variables checks for linearity. The data points should be scattered around a line, indicating a linear relationship. The below plot shows that the data points are related (inversely), however the data needs to be transformed in order for it to better fit the line.
+In the plot below, the blue line corresponds to a smoothed line, while the red corresponds to the model's line.
+
+```{r}
+plot(km, price, xlab=" Accumulated KM", ylab= "Price")
+lines(lowess(km, price), col="blue")
+abline(model_1, col="red")
+
+```
+
+b.  **4 pts** Residual plot - a plot of the residuals, $\hat\epsilon_i$, versus the fitted values, $\hat{y}_i$. Make sure you include a line showing the ideal baseline (hint: residual = 0) that serves as the comparison
+
+*Answer* 
+Model Assumption(s) it checks: constant variance and independence (uncorrelated errors) 
+Interpretation: The plot below shows heteroscedasticity, meaning that the variance is not constant. Which violated one of the assumptions of linear regression. There is larger variance as the fitted values increase. However, the independence assumption holds as there are no clusters of the residuals. 
+
+```{r}
+plot(model_1$fitted.values, model_1$residuals, xlab="Fitted Values", ylab="Residuals")
+abline(h=0, col="red")
+```
+
+c.  **4 pts** Histogram and q-q plot of the residuals. Make sure you include a line in the q-q showing the ideal baseline that serves as the comparison in a q-q plot
+
+*Answer* 
+Model Assumption(s) it checks: Normality
+Interpretation: In the Q-Q plot, the ends are curved which suggests non-normality. Regarding the histogram, while it is unimodal and there are no gaps, it is not symmetric which indicates non-normality.
+
+
+```{r}
+library(car)
+qqPlot(model_1$residuals, ylab="Residuals")
+hist(model_1$residuals, xlab="Residuals")
+
+```
+
+## Question B4: Prediction
+
+Use the results from both model_1 to discuss the effects of KM on the dependent variable: Holding everything else equal, how much the sales price would decrease if a car accumulated 10,000 more kilometers? What observations can you make about the result in the context of the problem? (3 pts)
+
+*Answer* 
+According to model 1, the equation is: 
+y = 1.494e+04 - 6.817e-02x. 
+y = 1.494e+04 - 6.817e-02(10000)
+Therefore, holding everything else equal, if a car accumulated 10,000 more kilometers then the sales price would decrease by 14261 Euros.
+
+
+```{r}
+summary(model_1)
+intercept = model_1$coefficients[1]
+km_coeff = model_1$coefficients[2]
+
+y = intercept + (km_coeff*10000)
+```
+
+# Part C. Experiment!
+
+You work for the National Park Service (NPS), and you absolutely love bears. Describe an imaginary (it can be realistic) scenario in which you get to run a one-way ANOVA on a few (3+) species of bears.
+
+### Part C1
+__What are you comparing (name the variable!)? What do you hope to learn from ANOVA?__ (2 pts)
+
+*Answer* 
+A possible thing to compare would be number of calories on average eaten per day across the species. The diet of bears is not consistent across species, for example, a panda's diet would be mainly bamboo while a polar bear's diet would be mainly seals. 
+Another thing we can possible compare would be the length of hair/fur. Since different species live in very different climates, the fur coat is different. 
+ANOVA would be helpful to compare the means of several independent groups in order to determine whether the means would be statistically significant.
+
+### Part C2
+__Imagine that the results are "mixed", meaning you can draw some conclusions and not others. Describe your conclusions and make sure you detail, with reference to your ANOVA, why the results were "mixed."__ (3 pts)
+
+*Answer*
+Mixed results might mean that the results are not coherent, or that you cannot form a solid conclusion about a group due to conflicting results. A possible scenario would be that the F-test would show significant difference in group means, while the other tests like pairwise comparisons don't.
+Mixed results can be a due to one or more of the assumptions (normality, independence, homoscedasticity) do not hold. Therefore, I would recheck them. The results might also be mixed due to possible interacting factors (such as seasonal variations in food consumption due to hibernation for example) between some of the groups.
+
+### Part C3
+__Now imagine that you have just been granted 3 months and $50,000 to continue this study (you're a great grant writer and a very likable member of the NPS!). Describe some next steps you would take to clarify, reinforce and/or further explore your nascent investigation. You MUST reference using a 'controlling' variable somehow in your response.__ (5 pts)
+
+*Answer*
+I would add the geographic location and seasonality as control variables, as these might play a big role in the variance which might be causing mixed results. I would also increase sample size. I would use a mixed-effects anova model to account for random and fixed effects. Fixed effects being species and controlling variables differences, while random effects may be random differences in caloric consumptions between bears of same specie.
+
+## Part D. Explain the meaning of a p-value!
+__Explain in detail what it means specifically — in a statistical sense — for any result to be "statistically significant" at a particular -level. In other words, explain the meaning and use of p-values. You should research this question, and you should expect your answer to be at least a paragraph long.__ (6 pts)
+
+*Answer* 
+A p-value is a number between 0 and 1 that quantifies how confident we should be in our decision to reject the null hypothesis. The closer the p-value is to 0, the more confident we are that we should reject the null hypothesis. 
+The null hypothesis being: there is no difference between the two groups/alternatives we are investigating. 
+The alternate hypothesis being: there exists a difference between the two groups we are comparing.
+The question remains; how small should a p-value be in order for us to determine that we should reject the null hypothesis/that there is a difference between both groups? 
+A common threshold is 0.05. This threshold means that if we repeated this experiment several times (in hopes of finding a real difference), 5% of the total experiments would have a "significant" difference (low p-value) but due to random effects (eg, placebo) rather than real differences. This is called a false positive. However, this threshold can be adjusted depending on the field. For example, in cases where it is imperative that we do not risk the decision (such as in medicine/drug trials), the p-value threshold can be adjusted to 0.01 for example. These thresholds are called alpha-levels. Lower alpha levels reduce the chance of false positives but might increase the risk of failing to detect a true/significant difference (false negative). On the other hand, higher alpha levels reduce the chance of false negatives, but increase the chance of false positives.
+P-values are used ins tatistical hypothesis testing. When we conduct hypothesis tests, we use the sampling distribution of a statistic (eg, mean), and under the null hypothesis we assume a specific distribution for the statistic. When we perform a hypothesis test, we use a test statistic such as z-score or t-score. It tells us how far many standard deviations our sample statistic (eg, mean) is from the null hypothesis value. This test statistic is then placed in the null distribution, and the p-value is the area under the curve which corresponds to the probability of getting a test statistic value equal or greater than the one we got, assuming the null hypothesis is true. Therefore, there are two types of tests -> two-tailed and one-tailed.
+In two-tailed tests, the p-value would be the area under the curve corresponding to the probability of the test statistic being equal to or more than the value we got in both directions. In one-tailed tests, the p-value would be the area under the curve corresponding to the probability of the test statistic being equal to or more than the value we got in one direction.
+
+
+
+
+## Citations
+https://www.evalacademy.com/articles/everything-you-need-to-know-about-likert-scales
+
+https://uk.surveymonkey.com/mp/likert-scale-pros-cons/
+
+https://www.youtube.com/watch?v=vemZtEM63GY
+
+ISYE 6414 Course Material
+
+
+

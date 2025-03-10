@@ -1,29 +1,227 @@
 ---
-title: "HW4"
-date: "2024-02-03"
-output: pdf_document
+title: "HW4_starter_template_R"
+output: html_document
 ---
+# Background
+The dataset includes 9 baseline numeric variables: age, body mass index, average blood pressure, and six blood serum measurements for each of n = 442 diabetes patients. The response of interest is a quantitative measure of diabetes disease progression one year after baseline. The dataset is obtained from sklearn.datasets. 
+
+## Attribute Information:
+age: age in years
+
+bmi: body mass index
+
+bp: average blood pressure
+
+s1: tc, total serum cholesterol
+
+s2: ldl, low-density lipoproteins
+
+s3: hdl, high-density lipoproteins
+
+s4: tch, total cholesterol / HDL
+
+s5: ltg, possibly log of serum triglycerides level
+
+s6: glu, blood sugar level
+
+Target: quantitative measure of disease progression one year after baseline
+
+*Note: All features have been standardized already.*
 
 ```{r setup, include=FALSE}
-rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-temps = read.table("temps.txt", header = TRUE, stringsAsFactors = FALSE)
+# Read Data
+```{r}
+set.seed(100)
 
-flatData = as.vector(unlist(temps[,2:21]))
+library(olsrr)
+library(stats)
+library(leaps)
+library(MASS)
+library(glmnet)
+library(corrplot)
 
-ts <- ts(flatData, start=1996, frequency=123)
+diabetes = read.csv('diabetes_dataset.csv')
+n = nrow(diabetes)
+head(diabetes)
+```
 
-hw1<- HoltWinters(ts, alpha = NULL, beta = NULL, gamma = NULL, seasonal = "multiplicative")
 
-plot(hw1)
-plot(hw1$fitted)
+# Question 1: EDA and Full Model - 9 points
+(a) Build a correlation matrix plot on the diabetes dataset. Interpret it. (3 points)
+```{r}
+corr_data = cor(diabetes)
+corrplot(corr_data)
+```
+The darker the blue color is, the stronger the positive correlation, and the darker the red color is the stronger the negative correlation is. The size of the dot corresponds to magnitude.    
+Therefore, we can see that s1 ans s2 are stronger positively correlated together. Bmi and target are also positively correlated.s4 and s3 are strongly negatively correlated together. s5 is also moderately to strongly correlated with target. s4 and s2 are also strongly positvely correlated.    
+      
+(b) Fit a multiple linear regression with the variable 'Target' as the response and the other variables as predictors. Call it model1. Display the model summary. (3 points)
+```{r}
+model1 = lm(Target ~ ., data = diabetes)
+summary(model1)
+```
 
-tempsSmoothed <- matrix(hw1$fitted[,4], nrow = 123)
+(c) What are the Mallow's Cp, AIC, and BIC values for the full model (model1)? (3 points)
+```{r}
+mallows_full = ols_mallows_cp(model1, model1)
+aic_full = AIC(model1)
+bic_full = BIC(model1)
+c(mallows_full, aic_full, bic_full)
+```
 
-write.csv(tempsSmoothed, file = "tempsSmoothed.csv", fileEncoding = "UTF-16LE")
 
+# Question 2: Statistical Significance - 9 points
+(a) In model1, which regression coefficients are significant at the 95% confidence level? At the 90% confidence level? (2 points)
+```{r}
+model1_summary = summary(model1)$coefficients
+model1_summary[, "Pr(>|t|)"] < 0.05
+model1_summary[, "Pr(>|t|)"] < 0.10
+
+```
+Coefficients significant at 0.05 -> intercept, bmi, bp, s5     
+Coefficients significant at 0.10 -> intercept, bmi, bp, s1, s5     
+
+(b) Build a new model using only the variables whose coefficients were found to be statistically significant at the 95% confidence level. Call it model2. Display the model summary. (3 points)
+```{r}
+model2 = lm(Target ~ bmi+bp+s5, data=diabetes)
+summary(model2)
+```
+
+(c) Perform a Partial F-test to compare this new model with the full model (model1) and interpret it at the 95% confidence level. Which one would you prefer? Is it good practice to select variables based on the statistical significance of individual coefficients? Why or why not? (4 points)
+```{r}
+anova(model1, model2)
+```
+Given that the p-value is less than 0.05 (0.007745), we reject the null hypothesis that the coefficients of the added predictors are all zero.     
+It is not good practice to select variables based on the statistical significance of individual coefficients because this depends on other variables in the model. It is its significance taking into consideration all the other variables in the model.
+
+# Question 3: Stepwise Regression - 13 points
+(a) Perform forward stepwise regression using BIC. Let the minimum model be the one with only an intercept, and the maximum model to be model1. Display the model summary of your final model. Call it forward_model. (3 points)
+```{r}
+min_model = lm(Target~1,data=diabetes)
+forward_model = step(min_model, scope=list(lower=min_model, upper=model1), direction="forward",k =log(nrow(diabetes)))
+summary(forward_model)
+```
+
+(b) Which variables were selected in the forward_model? Which regression coefficients are significant at the 99% confidence level in forward_model? (2 points)
+```{r}
+forward_model_summary = summary(forward_model)$coefficients
+forward_model_summary[, "Pr(>|t|)"] < 0.01
+```
+The coefficients that were added in the forward regression model were: bmi, s5, bp, s1.    
+Coefficients that are significant at the 99% level -> intercept, bmi, s5, bp, s1
+
+
+(c) Perform backward stepwise regression using AIC. Let the minimum model be the one with only an intercept, and the maximum model to be model1. Display the model summary of your final model. Call it backward_model. (3 points)
+```{r}
+backward_model = step(model1, scope=list(lower=min_model, upper=model1), direction="backward")
+backward_model_summary = summary(backward_model)$coefficients
+summary(backward_model)
 
 
 ```
 
+(d) Which regression coefficients are significant at the 99% confidence level in backward_model? Are the selected variables different in forward and backward models? (2 points)
+
+```{r}
+backward_model_summary[, "Pr(>|t|)"] < 0.01
+```
+Coefficients that are significant at the 99% -> intercept, bmi, bp, s1, s5    
+The variable s5 got added from backwards regression   
+
+
+(e) Perform 2 Partial F-tests to compare the backward_model with the full model (model1) and the forward model with model1. What is your interpretation at the 95% confidence level? (3 points)
+```{r}
+anova(model1, backward_model)
+anova(model1, forward_model)
+```
+model1 vs backward -> fail to reject null hypothesis that the added predictors are zero.
+model1 vs forward -> fail to reject null hypothesis that the added predictors are zero.
+
+# Question 4: Full Model Search - 11 points
+(a) How many models can be constructed using subsets drawn from the full set of variables? (2 points) 
+```{r}
+2^10 
+```
+1024 models    
+
+(b) Compare all possible models using Mallow’s Cp. Display the variables included in the best model and the corresponding Mallow’s Cp value. (3 points)
+```{r}
+
+out = leaps(diabetes[,-10], diabetes$Target , method = "Cp")
+cbind(as.matrix(out$which),out$Cp)
+```
+the variables in the best model -> age, bmi,bp, s1,s6
+(c) Use the selected variables to fit another model, call it best_model. Display the model summary. (2 points)
+```{r}
+best_model = lm(Target ~ age+bmi+bp+s1+s6, data=diabetes)
+summary(best_model)
+```
+
+(d) Compare the models (model1, model2, forward_model, best_model) using Adjusted R^2 and AIC. Which model is preferred based on this? (4 points)
+```{r}
+summary(model1)
+summary(model2)
+summary(best_model)
+
+AIC(model1)
+AIC(model2)
+AIC(forward_model)
+AIC(best_model)
+```
+Adjusted r^2 -> 0.4902 (model1), 0.4765 (model2), 0.4874 (forward), 0.401 (best)     
+AIC -> 4809.448 (model1), 4815.226 (model2), 4806.963 (forward),  4876.762 (best)    
+
+i would go with the forward one since its performance is not that far from model1 (the full model), and it is simpler.
+
+# Question 5: Ridge and Lasso Regularization - 13 points
+(a) Perform ridge regression. Use 10-fold CV to find the optimal lambda value and display it. (3 points)
+```{r}
+attach(diabetes)
+Xpred= cbind(age, bmi, bp, s1, s2, s3, s4, s5, s6)
+ridge_model <- cv.glmnet(Xpred, Target, alpha = 0, nfolds = 10)
+
+
+optimal_lambda_ridge <- ridge_model$lambda.min
+optimal_lambda_ridge
+```
+
+(b) Display the coefficients at optimal lambda. How many variables were selected by ridge regression? Was this result expected? Explain. (3 points)
+```{r}
+coef(ridge_model, s=ridge_model$lambda.min)
+```
+
+(c) Perform lasso regression. Use 10-fold CV to find the optimal lambda value and display it. (3 points)
+```{r}
+lasso_model.cv=cv.glmnet(Xpred, Target, alpha=1, nfolds=10)
+lasso_model = glmnet(Xpred, Target, alpha = 1, nlambda=100)
+lasso_model.cv
+lasso_model
+lasso_model.cv$lambda.min
+```
+
+(d) Display the coefficients at optimal lambda. How many variables were selected by lasso regression? (2 points)
+```{r}
+coef(lasso_model, s=lasso_model.cv$lambda.min)
+```
+
+(e) Plot the coefficient path for lasso regression. (2 points)
+```{r}
+plot(lasso_model)
+```
+
+
+# Question 6: Elastic Net Regularization - 5 points
+(a) Perform elastic net regression. Give equal weight to both penalties. Use 10-fold CV to find the optimal lambda value and display it. (3 points)
+```{r}
+en_model.cv=cv.glmnet(Xpred, Target, alpha=0.5, nfolds=10)
+en_model.cv$lambda.min
+```
+
+(b) Display the coefficients at optimal lambda. How many variables were selected by elastic net regression? (2 points)
+```{r}
+coef(en_model.cv, s=en_model.cv$lambda.min)
+```
 
