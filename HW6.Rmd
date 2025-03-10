@@ -1,0 +1,154 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+
+uscrime = read.table("uscrime.txt", header = TRUE, stringsAsFactors = FALSE)
+data = as.data.frame(uscrime)
+```
+
+## R Markdown
+
+
+
+```{r cars}
+pca = prcomp(data[,1:15], scale. = TRUE)
+summary(pca)
+#will take the first 4 PC since they capture around ~80% of the data
+
+#build a linear reg model with the 4 PC and find a line for that 
+#linear reg: predictors = 4 PC and 5th column is the response
+PC = pca$x[,1:4]
+lmData = cbind(PC,uscrime[,16])
+#here i had an error when i passed in data[,16] instead of uscrime[,16]. one is a data frame and one isnt. by passing in uscrime it was put as V5. -> read abt this
+
+regPC = lm(V5~., data = as.data.frame(lmData))
+summary(regPC)
+
+#yi = 905 + (65*PC1) - (70*PC2) + (25*PC3) + (69*PC4)
+#this line is for the scaled principal components, to predict the crime
+
+#in order to predict crime for a new city we would need to find the coefficients for the original unscaled data set
+
+#to do that we need to
+  #1. find the coefficients for the original scaled data
+  #2. unscale the coefficients for the original unscaled data
+
+#coefficient * vector (eigenvector)
+#we can then use the reg line (that was made using 4 predictors) to predict the new data point for the city
+
+#yi = 905 + (65*PC1) - (70*PC2) + (25*PC3) + (69*PC4) with scaled data
+
+#get the mean and std dev that was used to scale the data
+  #center in PCA is the mean and scale is the std dev
+#create array of new coefficients 
+
+
+
+#multiply eigenvectors by eigenvalue^2 --> coefficients of scaled data
+
+
+
+
+#create a pipeline that takes in data -> scale -> multiply by rotation == PCA
+#and vice versa. PCA -> 
+
+
+
+rotation = pca$rotation
+
+scaledData = scale(uscrime[,1:15])
+
+
+
+```
+
+
+
+```{r pressure, echo=FALSE}
+
+firstRowScaled = scaledData[1,]
+rotations = rotation[,1:4] #eigenvectors == pca
+
+
+##pcaNum = firstRowScaled %*% firstColRotation
+
+
+
+coeffOfScaledData = firstColRotation * (pca$sdev[[1]])^2  #coefficients of scaled data
+coeffOfScaledData
+
+#create table with the means and std deviations
+means = attr(scaledData,"scaled:center")
+stds = attr(scaledData, "scaled:scale")
+
+table = t(cbind(means,stds))
+
+originalCoeff = coeffOfScaledData/stds
+
+#calculating the y intercept
+lmIntercept = regPC$coefficients[[1]]
+means[1]
+runningSum = 0
+for(i in 1:15){
+  term1 = means[i]/stds[i]
+  runningSum = runningSum + (coeffOfScaledData[i] * term1)
+}
+
+originalInter = lmIntercept - runningSum
+
+
+
+#prediction
+point = data.frame(M=14.0,So=0,Ed=10.0,Po1=12.0,Po2=15.5,LF=0.640,M.F=94.0,Pop=150,NW=1.1,U1=0.120,U2=3.6,Wealth=3200,Ineq=20.1,Prob=0.04,Time=39.0)
+
+#point %*% originalCoeff
+#point[1]
+
+coefCalculation = 0
+fitPoint = function(x){
+  for(i in 1:15){
+    coefCalculation = coefCalculation + (x[i] * originalCoeff[i])
+  }
+  crime = originalInter - coefCalculation
+  return (crime)
+}
+
+prediction = fitPoint(point)
+
+
+predictPoint = predict(pca,point)
+predictPoint
+
+```
+```{r}
+#pca columns and their coefficients 
+
+pca1 = pca$rotation[,1]
+pca2 = pca$rotation[,2]
+pca3 = pca$rotation[,3]
+pca4 = pca$rotation[,4]
+
+finalCoEff = rep(0,15)
+modelCO = regPC$coefficients[2:5]
+
+
+for (i in 1:15){
+  finalCoEff[i] = (pca1[i]*regModelCoeff[1]/stds[i]) + (pca2[i]*regModelCoeff[2]/stds[i]) + (pca3[i]*regModelCoeff[3]/stds[i]) + (pca4[i]*regModelCoeff[4]/stds[i])
+}
+
+
+calc2 = 0
+obj = rep(0,15)
+fitPoint2 = function(x){
+  for(i in 1:15){
+    calc2 = calc2 + (x[i] * finalCoEff[i])
+    obj[i] = (calc2)
+  }
+  crime = lmIntercept + calc2
+  return (crime)
+}
+
+prediction = fitPoint2(point)
+prediction
+```

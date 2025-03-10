@@ -1,0 +1,87 @@
+---
+title: "HW10"
+date: "2024-03-27"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+data = read.table("breastcancer.txt", header = FALSE, sep="," , stringsAsFactors = FALSE)
+```
+
+##Homework 10 Data Imputation     
+      
+Question 14.1        
+        
+This question asks to do data imputation over the missing values using four methods; mean, mode, regression, regression with perturbation.    
+       
+I first had to check if there were any NA values in the data, which there weren't. Then I checked if any values had "?" instead of NA, which there were, in column 7.       
+Taking the indices of these missing values would be important, as well as getting an idea about how much missing data there is over all.      
+Then I checked if there were any trends in the missing data. There seemed to be a bias in that the missing data had mainly "2" as their response variable (V11). I then checked how much of the data (whether cleaned or in the original data set) had 2 as their response variable.
+
+```{r}
+
+anyNA(data)
+"?" %in% data$V7
+
+indices = which(data$V7 == "?")
+(length(indices)/nrow(data))*100 #percentage of missing data, should be <5%
+
+#is missing data biased?
+data_missing = data[indices,]
+data_clean = data[-indices,]
+table(data$V11)
+
+table(data_missing$V11) 
+sum((data_missing$V11 == 2) / (nrow(data_missing))) *100 #percentage of data missing that has the response variable equal to 2. 
+
+table(data_clean$V11)
+sum((data_clean$V11 == 2) / (nrow(data_clean))) *100
+
+table(data$V11)
+sum((data$V11 == 2) / (nrow(data))) *100
+```
+
+The first method of data imputation involves replacing the data values with the mean of the column. In this case the mean was 4, and so all missing data values were put as 4.     
+Similarly, the second method was to use the mode. The mode for V7 was 1, therefore all missing data values were replaced with 1.     
+This was interesting to see, as later on, we see that using regression with perturbation gave a series of predictions, and 50% of them were 1.
+
+```{r}
+
+#imputation by mean/mode
+
+table(data$V7) #mode = 1
+meanV7 = round(mean(as.numeric(data_clean$V7)),0) #mean
+
+dataMean = data
+dataMean$V7[dataMean$V7 == "?"] <- meanV7
+
+dataMode = data
+dataMode$V7[dataMode$V7 == "?"] <- 1
+
+```
+
+Moving onto regression. I used the clean data, the one that had the data points with missing values removed. I also omitted the original response variable (V11) as it does not make sense to add it. The fact that V1 to v10 are used to predict V11 does not make this relationship work vice versa. Instead, V7 is passed in as if it is the response variable, since it is the one we are trying to predict.  
+       
+Then by adding perturbation, we can get a more realistic idea of what the values might be. Perturbation means that we are adding a margin of error, which is projected from a probability distribution with mean mu and standard deviation theta. In this case, I used a normal distribution with mean equal to 0 and a standard deviation equal to 1.
+```{r}
+#Imputation using regression
+regData = data_clean[,1:10]
+reg = lm(V7~., data = regData)
+
+prediction = round(predict(reg, data_missing),0)
+
+
+#Imputation using regression with perturbation
+perturbed = rnorm(length(indices),0,1) #margins
+regPerturbed = round((prediction + perturbed),0)
+regPerturbed[regPerturbed == -1] <- 1
+
+regPerturbed
+
+
+```
+
+Question 15.1    
+A big problem I saw in my job at a cosmetics factory was under-staffing. Upon discussing it with my peers, we came to the conclusion that we are always under-staffed due to the company reducing overhead costs. I think an optimization problem would help immensely with this. It can help identify how many people the company can hire while keeping the costs low, and fairly taking into considerations positions that require more than one person. Given that it was a factory, we had overnight shifts. This can be taken into consideration when implementing the optimization problem.

@@ -1,0 +1,45 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+
+uscrime = read.table("uscrime.txt", header = TRUE, stringsAsFactors = FALSE)
+
+```
+
+## ISYE Homework 5 - Linear Regression      
+
+Question 8.1       
+I believe a linear regression model would be helpful in looking into and forecasting sales of a store/company. We can add interaction terms for events like discounts/offers/black fridays etc. This way the company could use the model to forecast sales across the seasons and in high/low discounts periods.        
+          
+Question 8.2         
+Linear regression is a way to fit a line to data using least squares and R^2.    
+In this homework we are asked to make a linear regression model using US crime data in order to predict the crime level in a hypothetical city, referred to as "point" in the code below. After building the model, the coefficients and intercept of the line produced is the below:         
+
+```{r cars}
+model = lm(Crime~., data = uscrime)
+model
+
+
+```
+
+The model gives an R^2 of 0.8 which means that around 80% of the data is taken into consideration while the other 20% is due to randomness or just data that the model doesn't capture. The adjusted R^2 (~0.7) takes into consideration the number of parameters used to fit the line to the data, as not all parameters are of equal significance.         
+The R^2 is basically the sum of the distance of the data point from the line squared of all the data points. So a smaller R^2 would mean a better fitted line for the data.      
+The p-value reported shows how significant the R^2 (the fit) is. A p-value of 3.59x10^-07 is supposed to be significant since it is less than 0.05.       
+However, the output from this model seems to suggest that it overfits the data (ie, being too optimistic).           
+          
+However, adding the point to the model and having it predict the crime gives:     
+```{r}
+point = data.frame(M=14.0,So=0,Ed=10.0,Po1=12.0,Po2=15.5,LF=0.640,M.F=94.0,Pop=150,NW=1.1,U1=0.120,U2=3.6,Wealth=3200,Ineq=20.1,Prob=0.04,Time=39.0)
+
+
+prediction = predict(model, point)
+prediction
+
+```
+

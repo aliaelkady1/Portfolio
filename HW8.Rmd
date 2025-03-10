@@ -1,0 +1,51 @@
+---
+title: "HW8"
+date: "2024-03-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+library("glmnet")
+uscrime = read.table("uscrime.txt", header = TRUE, stringsAsFactors = FALSE)
+```
+
+## ISYEHomework 8
+
+In a backward regression model, we first start with a saturated model and then we incrementally remove a factor that is the least significant.
+
+```{r}
+backModel = lm(Crime~., data = uscrime)
+set.seed(1)
+step(backModel, direction="backward",trace=0)
+
+```
+For forward regression - the model starts by fitting the y-intercept model only. Then it starts fitting every possible predictor and testing it to see if it lowers the AIC. After testing each possible combination of size n=1 to n=number of factors, it takes note of all those that significantly lowered the AIC and the final equation is based on that. 
+
+```{r}
+forwardModel = lm(Crime~1, data=uscrime)
+step(forwardModel, scope=formula(lm(Crime~.,data=uscrime)),direction="forward",trace=0)
+```
+In the 'both direction' regression model, we first start with the y-intercept model only. Then add predictors incrementally. After each predictor we then remove any predictors that were not longer significant for the model.    
+
+```{r}
+combinedModel = lm(Crime~., data = uscrime)
+step(combinedModel, scope=list(lower=formula(lm(Crime~1,data=uscrime)),upper=formula(lm(Crime~., data=uscrime))), direction="both", trace=0)
+
+```
+
+
+
+
+```{r}
+
+lassoModel = cv.glmnet(x=as.matrix(uscrime[,-16]),y=as.matrix(uscrime[,16]),          alpha=1,nfolds=8,nlamda=20, type.measure="mse", family="gaussian",standardize=TRUE)
+
+```
+
+
+
+
+
+

@@ -1,0 +1,44 @@
+---
+title: "HW3"
+date: "2024-01-31"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+library(ggplot2)
+library(outliers)
+usCrime = read.table("uscrime.txt", header = TRUE, stringsAsFactors = FALSE)
+crimeCol = usCrime$Crime
+crime <- usCrime[,"Crime"]
+str(crime)
+```
+
+## ISYE 6501 Homework 3      
+
+Question 5.1       
+Grubbs test is a method used to detect outliers in a normally distributed data set. By plotting the data in a histogram we can see that the data is somewhat normally distributed and the bloxplot shows us that potential outliers are present.
+Grubbs test is predefined by a null hypothesis (there no outliers) and an alternative hypothesis (there is exactly one outlier).               
+
+This first Grubbs test gave a p-value that is considered not significant therefore I removed the data point and tried again. The data point (1969) had a p-value of 0.03 which is considered significant but might be a bit high therefore I removed it and tried again.       
+
+The third try gave a more significant p-value (0.02) which suggests that the data point 1993 is an outlier.            
+```{r cars}
+plot(crime)
+hist(crime)
+boxplot(crime) #one sided outlier detection
+
+grubbs.test(crime,type=10)
+
+crime2 <- usCrime[-26,16]
+grubbs.test(crime2, type=10) 
+
+crime3 <- usCrime[-4,16]
+grubbs.test(crime3, type = 10)
+
+```
+Citation:      
+https://shorturl.at/fzDQ4      
+TA Office Hours     
+

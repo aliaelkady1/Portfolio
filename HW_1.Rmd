@@ -1,0 +1,127 @@
+---
+title: "ISYE_HW1"
+date: '2024-01-14'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("kernlab")
+library("kknn")
+data = read.table("C:/Users/aliae/Desktop/ISYE_HW/HW1/credit_card_data-headers.txt", header = TRUE)
+data
+```
+
+## ISYE Homework 1
+
+Question 2.1: Describe a situation for which a classification model would be appropriate
+
+For this question I will reference my graduation thesis projection which was on the toxicity of pesticide exposure. I worked with three well known pesticides and fundamentally tested different dosage levels and their effects on cells in vitro. How inherently toxic each pesticide is differs based on the chemical composition, therefore they can be weighted differently. For example, 0.2mcg of one pesticide might be considered toxic while it won't be considered as toxic if it was another pesticide. Using a kknn model, I could have my predictors as follows: pesticide type, dosage, and toxicity level, where each pesticide type would be weighed differently. The response would be whether the dosage of this specific pesticide is considered toxic or not.
+[this is a very simplified description of measuring toxicity levels]  
+
+
+Question 2.2 Part 1; KSVM
+
+The general purpose of KSVM is to find a classifier that can be used to accurately classify data into categories. A linear classifier means that it will find a line that will act as a divider (recall equation y=mx+b and ax+by+cz=d for a 3D plane). To do that we are passing in:    
+1. Columns of our data that will be used to predict the class of a data point.   
+2. Our response column. This acts as the "answers sheet" that will be used to check whether our model accurately predicted the class of the data points or not.   
+3. Since the KSVM function can be used for different purposes, we can specify that we intend to use it for classification purposes, hence the "C-svc" part.   
+4. In the event of having multiple overlapping points for example, it can sometimes help to "transform" the values of the data points in order for them to 'spread out' a bit and help us find a classifier. This is what "kernels" are referred to. Kernels are functions that find the dot product of the featured vectors.
+For example, a kernel might square each data point value in order for the points to spread out (explained better below). Vanilladot refers to a linear kernel where none of that 'extra' computation is done and it is just the dot product.
+5. A value for C is passed in.   
+6. And the data is scaled.    
+```{r, results='hide'}
+####### KSVM #######
+model <- ksvm(as.matrix(data[,1:10]),as.factor(data[,11]),type="C-svc",kernel="vanilladot",C=100,scaled=TRUE)
+```
+Our classifier:
+Referring to the documentation of the ksvm class, "xmatrix" is a matrix that has all the support vectors calculated from the data. On the other hand, "coef" is a list of the corresponding coefficients multiplied by the training labels. Therefore, "a" is an object where the attributes are the sums of the columns (first 10 columns of our data set). Each column is the product of its corresponding values in "xmatrix" and "coef".     
+This is to get the coefficients of our line. If we take this line (ax+by+cz=d) as an example, then in this step, we computed the coefficients 'a', 'b', and 'c'.
+
+Now to find the intercept ('d') which is denoted by a0 below:     
+This is automatically computed by the ksvm function and added as an attribute of our 'model' object and called 'b'. One thing to note here is that 'b' is the negative intercept, therefore we added a negative sign beforehand to output the positive value.
+```{r}
+#calculate a1....am
+a <- colSums(model@xmatrix[[1]] * model@coef[[1]])
+a
+
+#get a0
+a0 <- -model@b
+a0
+```
+Note that our ksvm model has formed the classifier and the section above was just me making sense of said classifier. Now what is left is to test our model and see how accurate its predictions are.      
+This is done by predict() which takes in our ksvm object as well as the data (predictors only, not including the response) and outputs its own prediction of the response column. The accuracy is then computed (which was approx 86.4%). 
+```{r}
+pred <- predict(model,data[,1:10])
+head(pred)
+
+#accuracy
+sum(pred == data[,11]) / nrow(data)
+```
+Question 2.2 Part 2; Non Linear Models of KSVM
+
+Instead of just finding the dot product as the vectors are, the Polydot kernel function adds a level of complexity and computes the dot product to a higher degree (eg, squaring the data). The general idea is this:     
+(ab + r)^d     
+  a = first data observation      
+  b = second data observation     
+  r = polynomial coefficient    
+  d = degree (so for squaring, 'd' would be 2)    
+
+Following the same steps as before, we see that the accuracy in this model is higher (approx 86.39%)
+```{r, results='hide'}
+####### Non-linear model #######
+nonLinearModel <-  ksvm(as.matrix(data[,1:10]),as.factor(data[,11]),type="C-svc",kernel="polydot",C=100,scaled=TRUE)
+```
+```{r}
+aNonLin <- colSums(nonLinearModel@xmatrix[[1]] * nonLinearModel@coef[[1]])
+aNonLin
+
+a0NonLin <- -nonLinearModel@b
+a0NonLin
+
+predNonLin <- predict(nonLinearModel,data[,1:10])
+head(predNonLin)
+
+sum(predNonLin == data[,11]) / nrow(data)
+
+```
+Question 2.2 Part 3; KKNN
+
+The kknn model can also be used to classify data into classes. Instead of a classifier, the kknn model classifies the data point as the most prevalent class in the k nearest neighbors. Where 'k' refers to the number of neighbors (closest in 'distance') to compare.     
+There are several ways to do this however I went for creating two separate data structures by splitting the data set. One for the training data and the other for the testing data which will be used by the model to see its accuracy. Training data compromised of around 80% (524 observations) of the original data set while the testing data 20% (130 observations).
+```{r}
+####### KKNN #######
+
+#create training and testing data
+
+trainData = data[1:524,]
+testData = data[525:654,]
+colNum = ncol(data)
+
+kmodel <- kknn(as.factor(R1)~. , train = trainData, test = testData, scale = TRUE)
+```
+I created a confusion table which basically sums up the number of correctly classified observations vs those that were classified incorrectly. 'Fitted values' is a vector of all the predictions the model made and testData$R1 refers to the response column in our test data.      
+The accuracy is computed similarly to that in the ksvm, and it is approx 86.92%. 
+```{r}
+confusion = table(testData$R1 , kmodel$fitted.values)
+confusion
+accuracy = (sum(diag(confusion))/nrow(testData)) 
+accuracy
+```
+
+
+Citations    
+
+1) Videos used:      
+https://rb.gy/c1dean      
+https://t.ly/tHpMa     
+https://rb.gy/8aaise    
+https://rb.gy/l8oh93    
+https://rb.gy/335d05    
+https://rb.gy/2h0hgp     
+
+
+2) Books used:      
+An Introduction to Statistical Learning in R      
+Linear Algebra for Dummies :)     
+

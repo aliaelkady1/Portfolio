@@ -1,0 +1,29 @@
+---
+title: "HW4"
+date: "2024-02-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+
+temps = read.table("temps.txt", header = TRUE, stringsAsFactors = FALSE)
+
+flatData = as.vector(unlist(temps[,2:21]))
+
+ts <- ts(flatData, start=1996, frequency=123)
+
+hw1<- HoltWinters(ts, alpha = NULL, beta = NULL, gamma = NULL, seasonal = "multiplicative")
+
+plot(hw1)
+plot(hw1$fitted)
+
+tempsSmoothed <- matrix(hw1$fitted[,4], nrow = 123)
+
+write.csv(tempsSmoothed, file = "tempsSmoothed.csv", fileEncoding = "UTF-16LE")
+
+
+
+```
+
+

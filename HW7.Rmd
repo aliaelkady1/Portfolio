@@ -1,0 +1,102 @@
+---
+title: "ISYE 6501 Homework 7"
+date: "2024-02-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+library("tree")
+library("randomForest")
+library("rpart")
+library("caret")
+library("pROC")
+
+uscrime = read.table("uscrime.txt", header = TRUE, stringsAsFactors = FALSE)
+
+set.seed(1)
+```
+
+Question 10.1a:          
+From the tree summary, we can see that the variables actually used in the tree construction are Pop1, Pop, LF, and NW. This indicates that these four attributes are the most important when it comes to predicting data.        
+The residual mean deviance is the total residual deviance divided by the number of observations minus the number of terminal nodes.The lower the residual mean deviance is, the better the model is able to predict the value of the response variable.  In this tree, the residual mean deviance is 47390.    
+
+```{r cars}
+regTree = tree(Crime~., data = uscrime)
+summary(regTree)
+plot(regTree)
+text(regTree)
+regTree$frame
+
+predTree = predict(regTree)
+plot(predTree, uscrime$Crime)
+```
+
+
+By pruning the tree and plotting it we get a graph comparing the size (number of terminal nodes) vs deviance. A size of 7 gives the lowest deviance ie, the best model. To confirm this I'll prune the tree to a size of 6 and this should give a higher residual mean deviance than what we got for size=7 (=47390).
+```{r}
+#prune the tree
+prunedTree = prune.tree(regTree)
+plot(prunedTree)
+
+```
+
+
+As expected, a pruned tree of size 6 gives a higher residual mean deviance (=49100).
+```{r}
+prunedTree6 = prune.tree(regTree, best=6)
+summary(prunedTree6)
+
+```
+
+Question 10.1 b:           
+By building a forest with 500 trees, using 4 as the number of factors to construct the tree (16/3 = 4), we get a mean of squared residuals equal to 79,319.46. Which means that our tree model performs slightly better since it has a lower mean residual deviance. This is expected since a random forest tends to be a very general model with which no specific insights can be drawn from.        
+```{r}
+rForest = randomForest(Crime~.,data=uscrime, mtry=4, importance=TRUE, ntree=500)
+rForest
+importance(rForest)
+```
+
+```{r, include=FALSE}
+#incError - how much one variable is important to the model and in predicting. therefore if it is high this means law ehna shelnaha then el error beyzeed awi meaning that it is important
+
+```
+
+Question 10.2:                  
+An example of logistic regression in real life would be the probability of a student doing well in an academic program and based on that, that would determine their acceptance in a university. Predictors of a student completing the program could be household income or salary, and predictors of their performance could be GPA, their major, number of failed courses.        
+
+
+Question 10.3:            
+To make a logistic regression model, I first randomly split that data into 80% training and 20% test.           
+logResp contains all the predicted probabilities for the test data that the model gave. We then need to set a threshold to determine whether or not the applicant is good or bad. By doing an ROC plot we can get a feel of what that threshold might be. Doing the ROC curve, the AUC was 0.7261 so I set the threshold to 0.8 to be on the safer side.       
+With 0.8 set as the threshold, the confusion matrix produced shows that only 9 applicants out of the 64 would be considered as good applicants. 
+
+```{r}
+germanCredit = read.table("germancredit.txt", header = FALSE, stringsAsFactors = TRUE)
+#zero=good, one=bad
+trial = germanCredit[,21] - 1
+combinedData = cbind(germanCredit[,1:20],trial)
+
+#80/20 data split
+trainIndices = createDataPartition(combinedData$trial,p=.80, list = FALSE) #indices of samples data
+
+trainingData = combinedData[trainIndices,] #actual training set
+testData = combinedData[-trainIndices,] #remaining 20% as test data
+
+logModel = glm(trial~., data=trainingData, family=binomial(link = "logit"))
+
+logResp = predict(logModel,testData, type="response") #probabilities
+
+auc = roc(testData$trial, round(logResp))
+auc
+
+adjustedVal = as.integer(logResp > 0.8)
+
+confusion = as.matrix(table(testData$trial,adjustedVal))
+confusion
+
+
+```
+
+
